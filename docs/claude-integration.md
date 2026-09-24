@@ -69,16 +69,17 @@ The deny JSON:
   "hookSpecificOutput": {
     "hookEventName": "PreToolUse",
     "permissionDecision": "deny",
-    "permissionDecisionReason": "<preamble>\n\n<review markdown>"
+    "permissionDecisionReason": "<review markdown>\n\n<follow-up>"
   }
 }
 ```
 
-The preamble tells Claude the user reviewed the plan in Neovim, that line
-numbers refer to the plan as reviewed, and to call `ExitPlanMode` again
-after revising. The review markdown is the `markdown` field of the JSON the
-plugin wrote, so the summary you saw before submitting is exactly what
-Claude receives.
+The review markdown is the `markdown` field of the JSON the plugin wrote:
+it opens with a preamble saying the user reviewed the plan in Neovim, which
+file and revision, and how the `L12-15 (## Heading)` anchors, section
+comments, quotes and the whole-plan note read. The summary you saw before
+submitting is exactly that text. The hook appends one follow-up line
+telling Claude to revise the plan file and call `ExitPlanMode` again.
 
 Test overrides: `ULTRAPLAN_LAUNCHER` (path to a stub launcher),
 `ULTRAPLAN_REQUIRE_KITTY=0`, `ULTRAPLAN_WORKDIR`, `ULTRAPLAN_OFF_FILE`.

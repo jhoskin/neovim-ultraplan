@@ -74,7 +74,7 @@ check '.comments[1] | [.kind, .end_lineno, .heading] | @csv' '"range",11,"## App
 check '.comments[1].text' $'1. Add a version key to every cache entry.\n2. Bump the key on deploy.'
 check '.comments[2] | [.kind, .end_lineno, .heading, .text] | @csv' '"section",21,"### Risks",'
 check '.comments[2].body' 'quantify the risk'
-check '.markdown | startswith("Plan review: fixture_plan.md")' 'true'
+check '.markdown | startswith("# Plan review: fixture_plan.md")' 'true'
 check '.markdown | contains("## L18-21, section ### Risks")' 'true'
 check '.markdown | contains("> 1. Add a version key")' 'true'
 

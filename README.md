@@ -108,14 +108,15 @@ Written to `~/.local/share/nvim/ultraplan/<id>.json` on submit (schema in
     { "kind": "range",   "lineno": 30, "end_lineno": 34, "heading": "## Approach", "text": "quoted lines", "body": "..." },
     { "kind": "section", "lineno": 40, "end_lineno": 58, "heading": "## Tests",    "text": null,           "body": "..." }
   ],
-  "markdown": "Plan review: x.md\n..."
+  "markdown": "# Plan review: x.md\n..."
 }
 ```
 
 `comments` is sorted by line. `text` is the quoted plan text, capped at 12
 lines or 1500 bytes; section comments carry the heading instead. `markdown`
-is the whole review rendered for Claude, and it is what the hook sends
-back. A null `note` with no comments means the plan is approved.
+is the whole review rendered for Claude, with a preamble that explains what
+was reviewed and how the anchors read; it is what the hook sends back. A
+null `note` with no comments means the plan is approved.
 
 ## Using it without Claude Code
 

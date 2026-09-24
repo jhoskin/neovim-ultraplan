@@ -24,14 +24,29 @@ function M.to_markdown(data)
   end
 
   local name = vim.fn.fnamemodify(data.plan.path, ":t")
-  add("Plan review: " .. name)
-  add("")
-
   local comments = data.comments or {}
+
+  add("# Plan review: " .. name)
+  add("")
   if not is_set(data.note) and #comments == 0 then
-    add("No comments. The plan is approved as written.")
+    add("The user read this plan in Neovim and left no comments. The plan is")
+    add("approved as written.")
     return table.concat(lines, "\n")
   end
+
+  add("The user read this plan in Neovim and left the comments below. They")
+  add(string.format("are anchored to the plan as it was when reviewed (%s, %d lines,",
+    data.plan.path, data.plan.line_count or 0))
+  add(string.format("sha256 %s):", tostring(data.plan.sha256):sub(1, 12)))
+  add("")
+  add("- `L12` is one line of the plan and `L12-15` a range of lines. The")
+  add("  heading in parentheses is the section those lines belong to, or the")
+  add("  heading the range contains.")
+  add("- A section comment covers everything under that heading.")
+  add("- The quoted text is the plan text at those lines; long quotes are cut")
+  add("  short with " .. "…" .. ".")
+  add("- A whole-plan note applies to the plan as a whole.")
+  add("")
 
   if is_set(data.note) then
     add("## Whole plan")

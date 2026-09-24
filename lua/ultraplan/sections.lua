@@ -73,6 +73,38 @@ function M.heading_for(sections, lineno)
   return s and s.heading or nil
 end
 
+-- The heading to label a span with: the first heading inside the span when
+-- it contains one (a range that crosses into a section is about that
+-- section), else the innermost heading enclosing its first line.
+function M.heading_for_span(sections, lineno, end_lineno)
+  end_lineno = end_lineno or lineno
+  for _, s in ipairs(sections) do
+    if s.lineno >= lineno and s.lineno <= end_lineno then
+      return s.heading
+    end
+  end
+  return M.heading_for(sections, lineno)
+end
+
+-- Shrink a line range so it starts and ends on non-blank lines. A range
+-- that is all blank comes back unchanged.
+function M.trim_blank(lines, lineno, end_lineno)
+  local function blank(i)
+    return (lines[i] or ""):match("^%s*$") ~= nil
+  end
+  local a, b = lineno, end_lineno
+  while a <= b and blank(a) do
+    a = a + 1
+  end
+  if a > b then
+    return lineno, end_lineno
+  end
+  while b > a and blank(b) do
+    b = b - 1
+  end
+  return a, b
+end
+
 -- First heading strictly after `lineno`, or nil.
 function M.next_heading(sections, lineno)
   for _, s in ipairs(sections) do

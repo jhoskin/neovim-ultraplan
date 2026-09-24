@@ -116,6 +116,10 @@ function M.sections()
   return state.sections or {}
 end
 
+function M.lines()
+  return state.lines or {}
+end
+
 -- Lines lineno..end_lineno of the plan (1-based, inclusive).
 function M.slice(lineno, end_lineno)
   local out = {}

@@ -114,7 +114,7 @@ function M._edit_anchor(anchor, prefill)
       if anchor.kind == "section" then
         rec.heading = anchor.heading
       else
-        rec.heading = sections.heading_for(render.sections(), anchor.lineno)
+        rec.heading = sections.heading_for_span(render.sections(), anchor.lineno, anchor.end_lineno)
         local cap = config.values.text_cap
         rec.text = sections.cap_text(render.slice(anchor.lineno, anchor.end_lineno), cap.lines, cap.bytes)
       end
@@ -147,6 +147,9 @@ function M.comment_range()
     return
   end
   local a, b = render.visual_range()
+  -- Blank lines at either end of a selection carry nothing; drop them so
+  -- the span and the quoted text start on real content.
+  a, b = sections.trim_blank(render.lines(), a, b)
   local anchor = { kind = a == b and "line" or "range", lineno = a, end_lineno = b }
   local existing = M._session.store:get(a)
   M._edit_anchor(anchor, existing and existing.body or "")

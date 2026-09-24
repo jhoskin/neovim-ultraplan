@@ -123,8 +123,10 @@ case "$rc" in
       note "review produced no markdown; showing the standard plan dialog"
       exit 0
     fi
-    preamble="The user reviewed this plan in Neovim and left the comments below. Revise the plan file to address every comment (line numbers refer to the plan as it was when reviewed), then call ExitPlanMode again to have it reviewed once more."
-    jq -n --arg reason "$preamble"$'\n\n'"$reason" \
+    # The review markdown explains itself (what was reviewed, how anchors
+    # read); the hook adds only what Claude Code should do next.
+    followup="Revise the plan file to address every comment, then call ExitPlanMode again to have the revised plan reviewed."
+    jq -n --arg reason "$reason"$'\n\n'"$followup" \
       '{hookSpecificOutput:{hookEventName:"PreToolUse",permissionDecision:"deny",permissionDecisionReason:$reason}}'
     exit 0
     ;;
