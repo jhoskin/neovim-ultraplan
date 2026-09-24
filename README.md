@@ -1,6 +1,8 @@
-# neovim-plan-review
+# neovim-ultraplan
 
-Review a Claude Code plan in Neovim and send your comments back. A local,
+plan-review: review a Claude Code plan in Neovim and send your comments
+back. (The repo keeps its first name; the plugin, command and scripts are
+called plan-review, since Ultraplan is a Claude Code feature.) A local,
 keyboard-driven version of the review loop Claude Code's PlanReview preview
 offered on the web: Claude writes a plan, you read it in Neovim, leave
 comments on lines, ranges, sections or the whole plan, and Claude revises
@@ -33,7 +35,7 @@ lazy.nvim:
 
 ```lua
 {
-  "jhoskin/neovim-plan-review",
+  "jhoskin/neovim-ultraplan",
   cmd = { "PlanReview" },
   main = "planreview",
   opts = {

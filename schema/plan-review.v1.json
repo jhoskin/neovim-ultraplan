@@ -1,8 +1,8 @@
 {
   "$schema": "https://json-schema.org/draft/2020-12/schema",
-  "$id": "https://github.com/jhoskin/neovim-plan-review/schema/plan-review.v1.json",
+  "$id": "https://github.com/jhoskin/neovim-ultraplan/schema/plan-review.v1.json",
   "title": "plan-review review v1",
-  "description": "Feedback on a markdown plan, written by the neovim-plan-review plugin on submit.",
+  "description": "Feedback on a markdown plan, written by the neovim-ultraplan plugin on submit.",
   "type": "object",
   "additionalProperties": false,
   "required": ["version", "id", "created_at", "plan", "note", "comments", "markdown"],

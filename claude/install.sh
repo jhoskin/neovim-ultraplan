@@ -1,5 +1,5 @@
 #!/usr/bin/env bash
-# Install the Claude Code integration for neovim-plan-review.
+# Install the Claude Code integration for neovim-ultraplan.
 #
 # Symlinks the ExitPlanMode hook and the launcher into ~/.claude so Claude
 # Code opens every plan in Neovim for review before asking for approval.

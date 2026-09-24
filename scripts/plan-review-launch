@@ -31,7 +31,7 @@
 #   1  error (diagnostic on stderr)
 #   3  still running (status only)
 #
-# Dependencies: bash, zmx, jq, nvim with the neovim-plan-review plugin, and
+# Dependencies: bash, zmx, jq, nvim with the neovim-ultraplan plugin, and
 # kitty (`kitten @` remote control) to surface the review as a focused tab.
 # Without kitty the review still runs; the script prints the `zmx attach`
 # command instead.

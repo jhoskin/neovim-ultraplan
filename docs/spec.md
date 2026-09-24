@@ -1,4 +1,4 @@
-# neovim-plan-review specification
+# neovim-ultraplan specification
 
 Requirements in EARS form, each with a test id. `Auto` tests are referenced
 by id in a test file header (`-- Covers:` or `# Covers:`); `Manual` tests
