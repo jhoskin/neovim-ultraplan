@@ -1,0 +1,25 @@
+# Review artifacts (local snapshots, not source)
+.reviews/
+
+# TRASH directories (rm-replacement convention)
+TRASH/
+TRASH-*/
+TRASH-FILES.md
+
+# Backup files
+*.bak
+*.bak.*
+
+# Neovim
+*.swp
+*.swo
+*~
+
+# macOS
+.DS_Store
+
+# Lua bytecode
+*.luac
+
+# Test dependencies (downloaded by tests/minimal_init.lua)
+.tests/

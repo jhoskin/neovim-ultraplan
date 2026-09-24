@@ -1,0 +1,141 @@
+#!/usr/bin/env bash
+# ultraplan-hook — Claude Code PreToolUse hook for ExitPlanMode.
+#
+# When Claude asks for plan approval, open the plan in Neovim (via
+# ultraplan-launch) and wait for the user's review:
+#   comments submitted  -> deny ExitPlanMode with the comments as the reason,
+#                          so Claude revises the plan and asks again
+#   empty submit        -> print nothing; the normal approval dialog appears
+#   cancel/abort/error  -> print nothing (a note on stderr); the normal dialog
+#                          appears, so nothing here can block approval
+#
+# Stand-downs (exit 0, no output): CLAUDE_ULTRAPLAN=off, ~/.claude/ultraplan.off
+# exists, no kitty socket (headless or remote session), or no plan in the
+# tool input.
+#
+# Hook input (stdin JSON): tool_name, tool_input.plan (text) and
+# tool_input.planFilePath (absolute path). Hook output on deny (stdout JSON):
+#   {"hookSpecificOutput":{"hookEventName":"PreToolUse",
+#     "permissionDecision":"deny","permissionDecisionReason":"..."}}
+# Only that JSON ever reaches stdout; everything else goes to stderr.
+#
+# settings.json entry (see claude/install.sh):
+#   { "matcher": "ExitPlanMode",
+#     "hooks": [ { "type": "command",
+#                  "command": "~/.claude/hooks/ultraplan-hook",
+#                  "timeout": 7200 } ] }
+#
+# Test overrides: ULTRAPLAN_LAUNCHER (path to a stub launcher),
+# ULTRAPLAN_REQUIRE_KITTY=0 (skip the kitty check), ULTRAPLAN_WORKDIR.
+
+set -uo pipefail
+
+LAUNCHER="${ULTRAPLAN_LAUNCHER:-$HOME/.claude/scripts/ultraplan-launch}"
+WORKDIR="${ULTRAPLAN_WORKDIR:-/tmp/ultraplan-launch}"
+OFF_FILE="${ULTRAPLAN_OFF_FILE:-$HOME/.claude/ultraplan.off}"
+
+note() {
+  printf 'ultraplan-hook: %s\n' "$*" >&2
+}
+
+input=$(cat)
+
+if [ "${CLAUDE_ULTRAPLAN:-}" = "off" ] || [ -e "$OFF_FILE" ]; then
+  exit 0
+fi
+
+tool=$(printf '%s' "$input" | jq -r '.tool_name // empty' 2>/dev/null)
+if [ "$tool" != "ExitPlanMode" ]; then
+  exit 0
+fi
+
+plan_path=$(printf '%s' "$input" | jq -r '.tool_input.planFilePath // empty' 2>/dev/null)
+plan_text=$(printf '%s' "$input" | jq -r '.tool_input.plan // empty' 2>/dev/null)
+if [ -z "$plan_path" ] && [ -z "$plan_text" ]; then
+  exit 0
+fi
+
+if [ "${ULTRAPLAN_REQUIRE_KITTY:-1}" != "0" ]; then
+  if ! ls /tmp/kitty-[0-9]* >/dev/null 2>&1; then
+    note "no kitty socket; skipping the Neovim review"
+    exit 0
+  fi
+fi
+
+if [ ! -x "$LAUNCHER" ]; then
+  note "launcher not found at $LAUNCHER; skipping the Neovim review"
+  exit 0
+fi
+
+if ! mkdir -p "$WORKDIR" 2>/dev/null; then
+  note "cannot create $WORKDIR; skipping the Neovim review"
+  exit 0
+fi
+
+# Review the file on disk when it matches the plan text Claude sent (both
+# compared without trailing newlines); otherwise review the text itself so
+# the user never reads a stale file.
+sha() {
+  printf '%s' "$1" | shasum -a 256 | cut -d' ' -f1
+}
+file=""
+if [ -n "$plan_path" ] && [ -f "$plan_path" ]; then
+  if [ -z "$plan_text" ] || [ "$(sha "$(cat "$plan_path")")" = "$(sha "$plan_text")" ]; then
+    file="$plan_path"
+  fi
+fi
+if [ -z "$file" ]; then
+  if [ -z "$plan_text" ]; then
+    note "plan file missing and no plan text; skipping the Neovim review"
+    exit 0
+  fi
+  tmp=$(mktemp "$WORKDIR/plan.XXXXXX") || exit 0
+  file="$tmp.md"
+  mv "$tmp" "$file"
+  printf '%s\n' "$plan_text" > "$file"
+fi
+
+handle=$("$LAUNCHER" start "$file" </dev/null)
+if [ -z "$handle" ]; then
+  note "could not start the review; showing the standard plan dialog"
+  exit 0
+fi
+
+# Wait in the background so a signal (Claude Code's hook timeout, Ctrl-C)
+# reaches the trap at once instead of after the review ends.
+out=$(mktemp "$WORKDIR/out.XXXXXX") || exit 0
+"$LAUNCHER" wait "$handle" >"$out" </dev/null &
+wpid=$!
+trap 'kill "$wpid" 2>/dev/null; "$LAUNCHER" cancel "$handle" >/dev/null 2>&1; rm -f "$out"; exit 0' TERM HUP INT
+wait "$wpid"
+rc=$?
+trap - TERM HUP INT
+
+case "$rc" in
+  0)
+    if jq -e '.note == null and (.comments | length) == 0' "$out" >/dev/null 2>&1; then
+      rm -f "$out"
+      exit 0
+    fi
+    reason=$(jq -r '.markdown' "$out" 2>/dev/null)
+    rm -f "$out"
+    if [ -z "$reason" ]; then
+      note "review produced no markdown; showing the standard plan dialog"
+      exit 0
+    fi
+    preamble="The user reviewed this plan in Neovim and left the comments below. Revise the plan file to address every comment (line numbers refer to the plan as it was when reviewed), then call ExitPlanMode again to have it reviewed once more."
+    jq -n --arg reason "$preamble"$'\n\n'"$reason" \
+      '{hookSpecificOutput:{hookEventName:"PreToolUse",permissionDecision:"deny",permissionDecisionReason:$reason}}'
+    exit 0
+    ;;
+  2)
+    rm -f "$out"
+    note "review cancelled; showing the standard plan dialog"
+    exit 0
+    ;;
+  *)
+    rm -f "$out"
+    note "review failed (rc=$rc); showing the standard plan dialog"
+    exit 0
+    ;;
+esac

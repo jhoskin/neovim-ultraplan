@@ -1,0 +1,49 @@
+{
+  "$schema": "https://json-schema.org/draft/2020-12/schema",
+  "$id": "https://github.com/jhoskin/neovim-ultraplan/schema/ultraplan.v1.json",
+  "title": "ultraplan review v1",
+  "description": "Feedback on a markdown plan, written by the neovim-ultraplan plugin on submit.",
+  "type": "object",
+  "additionalProperties": false,
+  "required": ["version", "id", "created_at", "plan", "note", "comments", "markdown"],
+  "properties": {
+    "version": { "const": 1 },
+    "id": { "type": "string", "pattern": "^\\d{8}T\\d{6}$" },
+    "created_at": { "type": "string", "format": "date-time" },
+    "plan": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": ["path", "sha256", "line_count"],
+      "properties": {
+        "path": { "type": "string", "description": "Absolute path of the reviewed plan file." },
+        "sha256": { "type": "string", "pattern": "^[0-9a-f]{64}$", "description": "SHA-256 of the plan text as displayed (lines joined by newline)." },
+        "line_count": { "type": "integer", "minimum": 0 }
+      }
+    },
+    "note": {
+      "type": ["string", "null"],
+      "description": "A comment on the whole plan, or null."
+    },
+    "comments": {
+      "type": "array",
+      "description": "Anchored comments sorted by lineno. Empty plus a null note means the plan is approved.",
+      "items": {
+        "type": "object",
+        "additionalProperties": false,
+        "required": ["kind", "lineno", "end_lineno", "heading", "text", "body"],
+        "properties": {
+          "kind": { "enum": ["line", "range", "section"] },
+          "lineno": { "type": "integer", "minimum": 1, "description": "First line of the span (1-based)." },
+          "end_lineno": { "type": "integer", "minimum": 1, "description": "Last line of the span, equal to lineno for a line comment." },
+          "heading": { "type": ["string", "null"], "description": "The nearest enclosing heading (for a section comment: the section's own heading), or null above the first heading." },
+          "text": { "type": ["string", "null"], "description": "The quoted plan text of the span, capped; null for a section comment." },
+          "body": { "type": "string", "minLength": 1 }
+        }
+      }
+    },
+    "markdown": {
+      "type": "string",
+      "description": "The whole review rendered as markdown; what the ExitPlanMode hook hands back to Claude."
+    }
+  }
+}

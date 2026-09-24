@@ -1,0 +1,299 @@
+#!/usr/bin/env bash
+# ultraplan-launch — hand a markdown plan to Neovim for review, asynchronously.
+#
+# A review can run far longer than a caller wants to block, so `start` spawns
+# the review and returns a handle at once. The caller polls `status <handle>`
+# (one-shot) or runs `wait <handle>` to block until the review finishes.
+#
+# The review runs in a detached zmx session. That session is the durable
+# supervisor and the source of truth for state: it outlives this script and
+# the kitty tab that displays it. Closing the tab only DETACHES the client;
+# the session survives and `wait` still completes when the review ends. If
+# the session is killed without a submit, `status`/`wait` report "aborted"
+# instead of hanging.
+#
+# Subcommands:
+#   start <plan.md>          spawn the review; print a HANDLE on stdout, exit 0
+#   status <handle>          one-shot: exit 3=running, 0=done (review JSON on
+#                            stdout), 2=cancelled/aborted, 1=error
+#   wait <handle> [interval] block, polling every <interval>s (default 1),
+#                            until the review finishes; same exit codes
+#   cancel <handle>          kill the review and remove its files; exit 0
+#   gc                       reap reviews older than UP_GC_MAX_AGE (6h). Runs
+#                            automatically before each `start`.
+#
+# On a terminal state the zmx session and the temp files are cleaned up;
+# killing the session closes any kitty tab attached to it.
+#
+# Exit codes (status / wait):
+#   0  submitted (review JSON printed on stdout)
+#   2  cancelled, or aborted (session ended without a submit)
+#   1  error (diagnostic on stderr)
+#   3  still running (status only)
+#
+# Dependencies: bash, zmx, jq, nvim with the neovim-ultraplan plugin, and
+# kitty (`kitten @` remote control) to surface the review as a focused tab.
+# Without kitty the review still runs; the script prints the `zmx attach`
+# command instead.
+
+set -euo pipefail
+
+RUNNING_RC=3
+ZMX="${UP_ZMX_BIN:-/opt/homebrew/bin/zmx}"
+KITTEN="${UP_KITTEN_BIN:-/Applications/kitty.app/Contents/MacOS/kitten}"
+NVIM="${UP_NVIM_BIN:-nvim}"
+WORKDIR="${UP_WORKDIR:-/tmp/ultraplan-launch}"
+GC_MAX_AGE="${UP_GC_MAX_AGE:-21600}" # 6h
+TAB_TITLE="${UP_TAB_TITLE:-plan}"
+
+# The plan path is interpolated into an `sh -c '...'` string and an Ex
+# command, so refuse characters that would break out of either. Real plan
+# paths (~/.claude/plans/<slug>.md) never contain them.
+reject_unsafe_arg() {
+  case "$1" in
+    *[\'\|\"\\]*|*$'\n'*)
+      printf 'ultraplan-launch: refusing unsafe path: %s\n' "$1" >&2
+      exit 1
+      ;;
+  esac
+}
+
+# The kitty remote-control socket: prefer the instance hosting this shell
+# (KITTY_PID is exported inside every kitty window), else the newest socket.
+# Empty output means no kitty to talk to.
+kitty_sock() {
+  if [ -n "${KITTY_PID:-}" ] && [ -e "/tmp/kitty-$KITTY_PID" ]; then
+    printf 'unix:/tmp/kitty-%s' "$KITTY_PID"
+    return
+  fi
+  local s
+  s=$(ls -t /tmp/kitty-[0-9]* 2>/dev/null | head -1 || true)
+  [ -n "$s" ] && printf 'unix:%s' "$s"
+}
+
+# Spawn a review. Sets HANDLE (= the result-file path) and writes
+# <handle>.state recording the zmx session name. Nothing goes to stdout.
+spawn_review() {
+  local plan="$1"
+  if [ -z "$plan" ]; then
+    printf 'ultraplan-launch: start needs a plan file\n' >&2
+    exit 1
+  fi
+  case "$plan" in
+    /*) ;;
+    *) plan="$PWD/$plan" ;;
+  esac
+  reject_unsafe_arg "$plan"
+  if [ ! -f "$plan" ]; then
+    printf 'ultraplan-launch: plan file not found: %s\n' "$plan" >&2
+    exit 1
+  fi
+
+  mkdir -p "$WORKDIR"
+  chmod 700 "$WORKDIR" 2>/dev/null || true
+  gc_sweep
+
+  HANDLE=$(mktemp "$WORKDIR/review.XXXXXX")
+  local base session sentinel
+  base=$(basename "$HANDLE")
+  session="ultraplan-${base//[!A-Za-z0-9_]/-}"
+  sentinel="$HANDLE.done"
+
+  # State first, so every session that ever exists is reapable by the
+  # age-based gc even if this script dies right after creating it.
+  {
+    printf 'started=%s\n' "$(date +%s)"
+    printf 'session=%s\n' "$session"
+    printf 'plan=%s\n' "$plan"
+  } > "$HANDLE.state"
+
+  # Neovim needs a real PTY, which a hook or an agent's shell does not have,
+  # so run it inside a detached zmx session; the sentinel records nvim's exit
+  # code the moment it exits, independent of any attached viewer.
+  if ! "$ZMX" run "$session" -d sh -c "NVIM_ULTRAPLAN_RESULT='$HANDLE' $NVIM -c 'Ultraplan $plan'; echo \$? > '$sentinel'" >/dev/null 2>&1; then
+    printf 'ultraplan-launch: failed to start the review session\n' >&2
+    cleanup_review "$HANDLE"
+    exit 1
+  fi
+
+  # Surface the review as a FOCUSED kitty tab: it is an interactive handoff,
+  # so it takes focus. Killing the zmx session later closes the tab.
+  local sock win
+  sock=$(kitty_sock)
+  if [ -n "$sock" ] \
+     && win=$("$KITTEN" @ --to "$sock" launch --type=tab \
+                --tab-title "$TAB_TITLE" \
+                "$ZMX" attach "$session" 2>/dev/null); then
+    [ -n "$win" ] \
+      && "$KITTEN" @ --to "$sock" focus-window --match "id:$win" >/dev/null 2>&1 \
+      || true
+    printf 'Plan review opened in a kitty tab (zmx session: %s).\n' "$session" >&2
+    # The attach resizes the PTY after nvim drew its first screen; nudge a
+    # repaint once the resize has settled.
+    ( sleep 1; printf '\x0c' | "$ZMX" send "$session" ) >/dev/null 2>&1 &
+  else
+    printf 'Attach to the review with:  zmx attach %s\n' "$session" >&2
+  fi
+}
+
+# Reap reviews started more than GC_MAX_AGE ago. Anything younger is never
+# touched, so an in-flight wait is never undercut.
+gc_sweep() {
+  local state handle started now
+  now=$(date +%s)
+  for state in "$WORKDIR"/review.*.state; do
+    [ -e "$state" ] || continue
+    handle="${state%.state}"
+    started=$(sed -n 's/^started=//p' "$state")
+    if [ -z "$started" ] || [ $((now - started)) -gt "$GC_MAX_AGE" ]; then
+      cleanup_review "$handle"
+    fi
+  done
+}
+
+# Read <handle>.state into STATE_SESSION (empty if absent). Parsed line by
+# line, never sourced.
+read_state() {
+  STATE_SESSION=""
+  local k v
+  [ -f "$1.state" ] || return 0
+  while IFS='=' read -r k v; do
+    case "$k" in
+      session) STATE_SESSION="$v" ;;
+    esac
+  done < "$1.state"
+}
+
+session_alive() {
+  [ -n "$STATE_SESSION" ] \
+    && "$ZMX" list --short 2>/dev/null | grep -Fxq "$STATE_SESSION"
+}
+
+# Tear down the review's zmx session and temp files. Idempotent.
+cleanup_review() {
+  local handle="$1"
+  read_state "$handle"
+  [ -n "$STATE_SESSION" ] \
+    && "$ZMX" kill "$STATE_SESSION" --force >/dev/null 2>&1 || true
+  rm -f "$handle" "$handle.done" "$handle.state"
+}
+
+# One-shot poll. The zmx session is the source of truth for liveness:
+#   sentinel present            -> an outcome was recorded; emit it
+#   no sentinel, session alive  -> still running
+#   no sentinel, session gone   -> aborted (killed without submitting)
+poll_once() {
+  local handle="$1" sentinel="$1.done" rc review_path
+  read_state "$handle"
+
+  if [ ! -f "$sentinel" ]; then
+    if session_alive; then
+      return "$RUNNING_RC"
+    fi
+    # Brief grace for the sentinel write racing the session teardown.
+    sleep 0.2
+    if [ ! -f "$sentinel" ]; then
+      printf 'review aborted: the session ended without submitting\n' >&2
+      cleanup_review "$handle"
+      return 2
+    fi
+  fi
+
+  rc=$(cat "$sentinel" 2>/dev/null || echo 1)
+  case "$rc" in
+    0)
+      review_path=$(cat "$handle" 2>/dev/null || true)
+      if [ -z "$review_path" ] || [ ! -f "$review_path" ]; then
+        printf 'ultraplan-launch: empty result file\n' >&2
+        cleanup_review "$handle"
+        return 1
+      fi
+      jq . "$review_path"
+      cleanup_review "$handle"
+      return 0
+      ;;
+    2)
+      printf 'review cancelled\n' >&2
+      cleanup_review "$handle"
+      return 2
+      ;;
+    *)
+      printf 'neovim error (exit %s)\n' "$rc" >&2
+      cleanup_review "$handle"
+      return "${rc:-1}"
+      ;;
+  esac
+}
+
+require_handle() {
+  local handle="${1:-}"
+  if [ -z "$handle" ] || [ ! -f "$handle.state" ]; then
+    printf 'ultraplan-launch: unknown review handle: %s\n' "${handle:-<none>}" >&2
+    exit 1
+  fi
+}
+
+do_start() {
+  spawn_review "${1:-}"
+  printf '%s\n' "$HANDLE"
+}
+
+do_status() {
+  require_handle "${1:-}"
+  local rc=0
+  poll_once "$1" || rc=$?
+  if [ "$rc" = "$RUNNING_RC" ]; then
+    printf 'running\n' >&2
+  fi
+  exit "$rc"
+}
+
+poll_loop() {
+  local handle="$1" interval="${2:-1}" start now max_wait=18000 rc
+  start=$(date +%s)
+  while true; do
+    rc=0
+    poll_once "$handle" || rc=$?
+    if [ "$rc" != "$RUNNING_RC" ]; then
+      exit "$rc"
+    fi
+    sleep "$interval"
+    now=$(date +%s)
+    if [ $((now - start)) -gt $max_wait ]; then
+      printf 'ultraplan-launch: timed out after %d seconds\n' "$max_wait" >&2
+      cleanup_review "$handle"
+      exit 1
+    fi
+  done
+}
+
+do_wait() {
+  require_handle "${1:-}"
+  poll_loop "$1" "${2:-1}"
+}
+
+do_cancel() {
+  require_handle "${1:-}"
+  cleanup_review "$1"
+  printf 'review cancelled\n' >&2
+  exit 0
+}
+
+do_gc() {
+  mkdir -p "$WORKDIR" 2>/dev/null || true
+  gc_sweep
+  printf 'gc: swept reviews older than %ss in %s\n' "$GC_MAX_AGE" "$WORKDIR" >&2
+}
+
+cmd="${1:-}"
+case "$cmd" in
+  start) shift; do_start "${1:-}" ;;
+  status) shift; do_status "${1:-}" ;;
+  wait) shift; do_wait "${1:-}" "${2:-1}" ;;
+  cancel) shift; do_cancel "${1:-}" ;;
+  gc) do_gc ;;
+  *)
+    printf 'usage: ultraplan-launch start <plan.md> | status <handle> | wait <handle> [interval] | cancel <handle> | gc\n' >&2
+    exit 1
+    ;;
+esac
