@@ -1,8 +1,8 @@
 -- Covers: TST-PLN-0006 TST-PLN-0007
 local H = ...
-local Store = require("ultraplan.store")
-local result = require("ultraplan.result")
-local export = require("ultraplan.export")
+local Store = require("planreview.store")
+local result = require("planreview.result")
+local export = require("planreview.export")
 
 local function plan_info()
   return { path = "/tmp/plans/x.md", lines = { "# Title", "", "## A", "one", "two", "## B", "three" } }

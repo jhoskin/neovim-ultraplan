@@ -1,4 +1,4 @@
-# neovim-ultraplan specification
+# neovim-plan-review specification
 
 Requirements in EARS form, each with a test id. `Auto` tests are referenced
 by id in a test file header (`-- Covers:` or `# Covers:`); `Manual` tests
@@ -35,10 +35,10 @@ later comment on the same start line replaces the earlier one; blank
 bodies are rejected; `all()` is sorted by line; the whole-plan note counts
 as one comment.
 
-## 4. Output (result.lua, export.lua, schema/ultraplan.v1.json)
+## 4. Output (result.lua, export.lua, schema/plan-review.v1.json)
 
 **REQ-PLN-0006** (Event-driven): When the user submits, the system shall
-write a JSON document matching `schema/ultraplan.v1.json`: nullable fields
+write a JSON document matching `schema/plan-review.v1.json`: nullable fields
 are emitted as `null`, an empty comment list as `[]`, comments sorted by
 line, `end_lineno` equal to `lineno` for a line comment, and `plan.sha256`
 over the displayed lines.
@@ -50,9 +50,9 @@ quote and the body.
 
 ## 5. View (render.lua, ui.lua)
 
-**REQ-PLN-0008** (Event-driven): When `:Ultraplan <file>` runs, the system
+**REQ-PLN-0008** (Event-driven): When `:PlanReview <file>` runs, the system
 shall open the plan in a new tab in a scratch buffer named
-`ultraplan://<basename>` with `modifiable=false`, filetype `ultraplan`, no
+`plan-review://<basename>` with `modifiable=false`, filetype `planreview`, no
 LSP client, and the cursor in that window.
 
 **REQ-PLN-0009** (Event-driven): When the user invokes the line, range,
@@ -70,17 +70,17 @@ comment; the delete key shall remove the covering comment, or the
 whole-plan note when nothing covers the cursor; `]c`/`[c` and `]]`/`[[`
 shall move between comments and headings.
 
-## 6. Session and exit codes (init.lua, plugin/ultraplan.lua)
+## 6. Session and exit codes (init.lua, plugin/planreview.lua)
 
 **REQ-PLN-0011** (Event-driven): When the user submits with no comments,
 the summary shall say the plan is approved and the document shall carry
 `note: null` and `comments: []`.
 
-**REQ-PLN-0012** (Event-driven): In agent mode (`NVIM_ULTRAPLAN_RESULT`
+**REQ-PLN-0012** (Event-driven): In agent mode (`NVIM_PLAN_REVIEW_RESULT`
 set), cancel and quitting Neovim shall exit 2 without a result file.
 
 **REQ-PLN-0013** (Unwanted): If the plan file cannot be read, the system
-shall exit 1 with `ultraplan: plan_not_found: ...` on stderr.
+shall exit 1 with `plan-review: plan_not_found: ...` on stderr.
 
 **REQ-PLN-0014** (Ubiquitous): The system shall not depend on git; a review
 started outside a repository shall save and exit 0.
@@ -130,4 +130,4 @@ shall kill the session and remove the handle's files.
 | REQ-PLN-0018 | TST-PLN-0018 | Auto | tests/e2e/test_07_hook.sh |
 | REQ-PLN-0019 | TST-PLN-0019 | Auto | tests/e2e/test_08_launcher.sh |
 | REQ-PLN-0020 | TST-PLN-0020 | Auto | tests/e2e/test_08_launcher.sh |
-| Kitty tab opens focused, hook loop end to end in Claude Code | TST-PLN-0021 | Manual | pipe a PreToolUse payload into `~/.claude/hooks/ultraplan-hook` |
+| Kitty tab opens focused, hook loop end to end in Claude Code | TST-PLN-0021 | Manual | pipe a PreToolUse payload into `~/.claude/hooks/plan-review-hook` |

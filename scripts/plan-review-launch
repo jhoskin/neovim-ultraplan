@@ -1,5 +1,5 @@
 #!/usr/bin/env bash
-# ultraplan-launch — hand a markdown plan to Neovim for review, asynchronously.
+# plan-review-launch — hand a markdown plan to Neovim for review, asynchronously.
 #
 # A review can run far longer than a caller wants to block, so `start` spawns
 # the review and returns a handle at once. The caller polls `status <handle>`
@@ -19,7 +19,7 @@
 #   wait <handle> [interval] block, polling every <interval>s (default 1),
 #                            until the review finishes; same exit codes
 #   cancel <handle>          kill the review and remove its files; exit 0
-#   gc                       reap reviews older than UP_GC_MAX_AGE (6h). Runs
+#   gc                       reap reviews older than PLAN_REVIEW_GC_MAX_AGE (6h). Runs
 #                            automatically before each `start`.
 #
 # On a terminal state the zmx session and the temp files are cleaned up;
@@ -31,7 +31,7 @@
 #   1  error (diagnostic on stderr)
 #   3  still running (status only)
 #
-# Dependencies: bash, zmx, jq, nvim with the neovim-ultraplan plugin, and
+# Dependencies: bash, zmx, jq, nvim with the neovim-plan-review plugin, and
 # kitty (`kitten @` remote control) to surface the review as a focused tab.
 # Without kitty the review still runs; the script prints the `zmx attach`
 # command instead.
@@ -39,12 +39,12 @@
 set -euo pipefail
 
 RUNNING_RC=3
-ZMX="${UP_ZMX_BIN:-/opt/homebrew/bin/zmx}"
-KITTEN="${UP_KITTEN_BIN:-/Applications/kitty.app/Contents/MacOS/kitten}"
-NVIM="${UP_NVIM_BIN:-nvim}"
-WORKDIR="${UP_WORKDIR:-/tmp/ultraplan-launch}"
-GC_MAX_AGE="${UP_GC_MAX_AGE:-21600}" # 6h
-TAB_TITLE="${UP_TAB_TITLE:-plan}"
+ZMX="${PLAN_REVIEW_ZMX_BIN:-/opt/homebrew/bin/zmx}"
+KITTEN="${PLAN_REVIEW_KITTEN_BIN:-/Applications/kitty.app/Contents/MacOS/kitten}"
+NVIM="${PLAN_REVIEW_NVIM_BIN:-nvim}"
+WORKDIR="${PLAN_REVIEW_WORKDIR:-/tmp/plan-review-launch}"
+GC_MAX_AGE="${PLAN_REVIEW_GC_MAX_AGE:-21600}" # 6h
+TAB_TITLE="${PLAN_REVIEW_TAB_TITLE:-plan}"
 
 # The plan path is interpolated into an `sh -c '...'` string and an Ex
 # command, so refuse characters that would break out of either. Real plan
@@ -52,7 +52,7 @@ TAB_TITLE="${UP_TAB_TITLE:-plan}"
 reject_unsafe_arg() {
   case "$1" in
     *[\'\|\"\\]*|*$'\n'*)
-      printf 'ultraplan-launch: refusing unsafe path: %s\n' "$1" >&2
+      printf 'plan-review-launch: refusing unsafe path: %s\n' "$1" >&2
       exit 1
       ;;
   esac
@@ -76,7 +76,7 @@ kitty_sock() {
 spawn_review() {
   local plan="$1"
   if [ -z "$plan" ]; then
-    printf 'ultraplan-launch: start needs a plan file\n' >&2
+    printf 'plan-review-launch: start needs a plan file\n' >&2
     exit 1
   fi
   case "$plan" in
@@ -85,7 +85,7 @@ spawn_review() {
   esac
   reject_unsafe_arg "$plan"
   if [ ! -f "$plan" ]; then
-    printf 'ultraplan-launch: plan file not found: %s\n' "$plan" >&2
+    printf 'plan-review-launch: plan file not found: %s\n' "$plan" >&2
     exit 1
   fi
 
@@ -96,7 +96,7 @@ spawn_review() {
   HANDLE=$(mktemp "$WORKDIR/review.XXXXXX")
   local base session sentinel
   base=$(basename "$HANDLE")
-  session="ultraplan-${base//[!A-Za-z0-9_]/-}"
+  session="plan-review-${base#review.}"
   sentinel="$HANDLE.done"
 
   # State first, so every session that ever exists is reapable by the
@@ -110,8 +110,8 @@ spawn_review() {
   # Neovim needs a real PTY, which a hook or an agent's shell does not have,
   # so run it inside a detached zmx session; the sentinel records nvim's exit
   # code the moment it exits, independent of any attached viewer.
-  if ! "$ZMX" run "$session" -d sh -c "NVIM_ULTRAPLAN_RESULT='$HANDLE' $NVIM -c 'Ultraplan $plan'; echo \$? > '$sentinel'" >/dev/null 2>&1; then
-    printf 'ultraplan-launch: failed to start the review session\n' >&2
+  if ! "$ZMX" run "$session" -d sh -c "NVIM_PLAN_REVIEW_RESULT='$HANDLE' $NVIM -c 'PlanReview $plan'; echo \$? > '$sentinel'" >/dev/null 2>&1; then
+    printf 'plan-review-launch: failed to start the review session\n' >&2
     cleanup_review "$HANDLE"
     exit 1
   fi
@@ -204,7 +204,7 @@ poll_once() {
     0)
       review_path=$(cat "$handle" 2>/dev/null || true)
       if [ -z "$review_path" ] || [ ! -f "$review_path" ]; then
-        printf 'ultraplan-launch: empty result file\n' >&2
+        printf 'plan-review-launch: empty result file\n' >&2
         cleanup_review "$handle"
         return 1
       fi
@@ -228,7 +228,7 @@ poll_once() {
 require_handle() {
   local handle="${1:-}"
   if [ -z "$handle" ] || [ ! -f "$handle.state" ]; then
-    printf 'ultraplan-launch: unknown review handle: %s\n' "${handle:-<none>}" >&2
+    printf 'plan-review-launch: unknown review handle: %s\n' "${handle:-<none>}" >&2
     exit 1
   fi
 }
@@ -260,7 +260,7 @@ poll_loop() {
     sleep "$interval"
     now=$(date +%s)
     if [ $((now - start)) -gt $max_wait ]; then
-      printf 'ultraplan-launch: timed out after %d seconds\n' "$max_wait" >&2
+      printf 'plan-review-launch: timed out after %d seconds\n' "$max_wait" >&2
       cleanup_review "$handle"
       exit 1
     fi
@@ -293,7 +293,7 @@ case "$cmd" in
   cancel) shift; do_cancel "${1:-}" ;;
   gc) do_gc ;;
   *)
-    printf 'usage: ultraplan-launch start <plan.md> | status <handle> | wait <handle> [interval] | cancel <handle> | gc\n' >&2
+    printf 'usage: plan-review-launch start <plan.md> | status <handle> | wait <handle> [interval] | cancel <handle> | gc\n' >&2
     exit 1
     ;;
 esac

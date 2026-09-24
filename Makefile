@@ -16,7 +16,7 @@ test-e2e:
 
 # Health check in headless mode
 health:
-	$(NVIM) -u tests/minimal_init.lua --headless -c 'checkhealth ultraplan' -c 'w! /dev/stderr | qa!'
+	$(NVIM) -u tests/minimal_init.lua --headless -c 'checkhealth planreview' -c 'w! /dev/stderr | qa!'
 
 # Lint with luacheck (install: luarocks install luacheck)
 lint:

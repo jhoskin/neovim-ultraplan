@@ -8,8 +8,8 @@
 set -uo pipefail
 
 PLUGIN_ROOT="${PLUGIN_ROOT:-$(cd "$(dirname "${BASH_SOURCE[0]}")/../.." && pwd)}"
-HOOK="$PLUGIN_ROOT/scripts/ultraplan-hook"
-WORK=$(mktemp -d -t up-hook.XXXXXX)
+HOOK="$PLUGIN_ROOT/scripts/plan-review-hook"
+WORK=$(mktemp -d -t pr-hook.XXXXXX)
 trap 'rm -rf "$WORK"' EXIT
 
 STUB="$WORK/stub-launcher"
@@ -25,9 +25,9 @@ esac
 EOF
 chmod +x "$STUB"
 
-export ULTRAPLAN_LAUNCHER="$STUB" ULTRAPLAN_REQUIRE_KITTY=0 ULTRAPLAN_WORKDIR="$WORK/wd" ULTRAPLAN_OFF_FILE="$WORK/off"
+export PLAN_REVIEW_LAUNCHER="$STUB" PLAN_REVIEW_REQUIRE_KITTY=0 PLAN_REVIEW_WORKDIR="$WORK/wd" PLAN_REVIEW_OFF_FILE="$WORK/off"
 export STUB_LOG="$WORK/calls" STUB_JSON="$WORK/review.json"
-unset CLAUDE_ULTRAPLAN
+unset CLAUDE_PLAN_REVIEW
 
 PLAN="$WORK/plan.md"
 printf '# Plan\n\n## Step\n\nDo the thing.\n' > "$PLAN"
@@ -80,7 +80,7 @@ for rc in 2 1; do
 done
 
 # 4. Opt-outs never invoke the launcher.
-CLAUDE_ULTRAPLAN=off run_hook "$(input "$PLAN" "$plan_text")"
+CLAUDE_PLAN_REVIEW=off run_hook "$(input "$PLAN" "$plan_text")"
 [ "$HOOK_RC" = "0" ] && [ -z "$HOOK_OUT" ] && [ ! -e "$STUB_LOG" ] || fail "env opt-out invoked the launcher"
 touch "$WORK/off"
 run_hook "$(input "$PLAN" "$plan_text")"

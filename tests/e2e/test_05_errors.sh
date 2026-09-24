@@ -5,20 +5,20 @@
 # (nothing here depends on git).
 source "$(dirname "$0")/lib.sh"
 
-SESSION="up_e2e_05"
+SESSION="pr_e2e_05"
 trap 'cleanup_session "$SESSION"; rm -rf "${SCRATCH:-}"' EXIT
 
-start_nvim "$SESSION" "$PLUGIN_ROOT" -c "'Ultraplan /nonexistent/plan.md'"
+start_nvim "$SESSION" "$PLUGIN_ROOT" -c "'PlanReview /nonexistent/plan.md'"
 wait_for_exit "$SESSION"
 [ "$(exit_code_for "$SESSION")" = "1" ] || { echo "FAIL: missing plan exit code $(exit_code_for "$SESSION")"; exit 1; }
-stderr_for "$SESSION" | grep -q "ultraplan: plan_not_found:" || { echo "FAIL: stderr lacks plan_not_found"; stderr_for "$SESSION"; exit 1; }
+stderr_for "$SESSION" | grep -q "plan-review: plan_not_found:" || { echo "FAIL: stderr lacks plan_not_found"; stderr_for "$SESSION"; exit 1; }
 cleanup_session "$SESSION"
 
-SCRATCH=$(mktemp -d -t up-nogit.XXXXXX)
+SCRATCH=$(mktemp -d -t pr-nogit.XXXXXX)
 cp "$FIXTURE_PLAN" "$SCRATCH/plan.md"
-start_nvim "$SESSION" "$SCRATCH" -c "'Ultraplan plan.md'"
+start_nvim "$SESSION" "$SCRATCH" -c "'PlanReview plan.md'"
 wait_for "$SESSION" "Sample plan"
-send_cmd "$SESSION" "UltraplanSubmit"
+send_cmd "$SESSION" "PlanReviewSubmit"
 wait_for "$SESSION" "approve the plan"
 send_keys "$SESSION" Enter
 wait_for_exit "$SESSION"

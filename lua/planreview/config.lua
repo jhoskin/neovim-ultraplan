@@ -43,10 +43,10 @@ function M._define_highlights()
   local function set(name, spec)
     vim.api.nvim_set_hl(0, name, vim.tbl_extend("force", { default = true }, spec or {}))
   end
-  set("UltraplanSpan", h.span)
-  set("UltraplanComment", h.comment)
-  set("UltraplanSign", h.sign)
-  set("UltraplanNote", h.note)
+  set("PlanReviewSpan", h.span)
+  set("PlanReviewComment", h.comment)
+  set("PlanReviewSign", h.sign)
+  set("PlanReviewNote", h.note)
 end
 
 return M

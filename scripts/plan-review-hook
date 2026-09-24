@@ -1,15 +1,15 @@
 #!/usr/bin/env bash
-# ultraplan-hook — Claude Code PreToolUse hook for ExitPlanMode.
+# plan-review-hook — Claude Code PreToolUse hook for ExitPlanMode.
 #
 # When Claude asks for plan approval, open the plan in Neovim (via
-# ultraplan-launch) and wait for the user's review:
+# plan-review-launch) and wait for the user's review:
 #   comments submitted  -> deny ExitPlanMode with the comments as the reason,
 #                          so Claude revises the plan and asks again
 #   empty submit        -> print nothing; the normal approval dialog appears
 #   cancel/abort/error  -> print nothing (a note on stderr); the normal dialog
 #                          appears, so nothing here can block approval
 #
-# Stand-downs (exit 0, no output): CLAUDE_ULTRAPLAN=off, ~/.claude/ultraplan.off
+# Stand-downs (exit 0, no output): CLAUDE_PLAN_REVIEW=off, ~/.claude/plan-review.off
 # exists, no kitty socket (headless or remote session), or no plan in the
 # tool input.
 #
@@ -22,25 +22,25 @@
 # settings.json entry (see claude/install.sh):
 #   { "matcher": "ExitPlanMode",
 #     "hooks": [ { "type": "command",
-#                  "command": "~/.claude/hooks/ultraplan-hook",
+#                  "command": "~/.claude/hooks/plan-review-hook",
 #                  "timeout": 7200 } ] }
 #
-# Test overrides: ULTRAPLAN_LAUNCHER (path to a stub launcher),
-# ULTRAPLAN_REQUIRE_KITTY=0 (skip the kitty check), ULTRAPLAN_WORKDIR.
+# Test overrides: PLAN_REVIEW_LAUNCHER (path to a stub launcher),
+# PLAN_REVIEW_REQUIRE_KITTY=0 (skip the kitty check), PLAN_REVIEW_WORKDIR.
 
 set -uo pipefail
 
-LAUNCHER="${ULTRAPLAN_LAUNCHER:-$HOME/.claude/scripts/ultraplan-launch}"
-WORKDIR="${ULTRAPLAN_WORKDIR:-/tmp/ultraplan-launch}"
-OFF_FILE="${ULTRAPLAN_OFF_FILE:-$HOME/.claude/ultraplan.off}"
+LAUNCHER="${PLAN_REVIEW_LAUNCHER:-$HOME/.claude/scripts/plan-review-launch}"
+WORKDIR="${PLAN_REVIEW_WORKDIR:-/tmp/plan-review-launch}"
+OFF_FILE="${PLAN_REVIEW_OFF_FILE:-$HOME/.claude/plan-review.off}"
 
 note() {
-  printf 'ultraplan-hook: %s\n' "$*" >&2
+  printf 'plan-review-hook: %s\n' "$*" >&2
 }
 
 input=$(cat)
 
-if [ "${CLAUDE_ULTRAPLAN:-}" = "off" ] || [ -e "$OFF_FILE" ]; then
+if [ "${CLAUDE_PLAN_REVIEW:-}" = "off" ] || [ -e "$OFF_FILE" ]; then
   exit 0
 fi
 
@@ -55,7 +55,7 @@ if [ -z "$plan_path" ] && [ -z "$plan_text" ]; then
   exit 0
 fi
 
-if [ "${ULTRAPLAN_REQUIRE_KITTY:-1}" != "0" ]; then
+if [ "${PLAN_REVIEW_REQUIRE_KITTY:-1}" != "0" ]; then
   if ! ls /tmp/kitty-[0-9]* >/dev/null 2>&1; then
     note "no kitty socket; skipping the Neovim review"
     exit 0

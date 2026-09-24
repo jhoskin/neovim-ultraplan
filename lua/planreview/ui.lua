@@ -1,6 +1,6 @@
 -- Floating windows: the comment editor and the submit summary.
 
-local config = require("ultraplan.config")
+local config = require("planreview.config")
 
 local M = {}
 
@@ -27,7 +27,7 @@ local function scratch_markdown_buf()
   vim.bo[buf].bufhidden = "wipe"
   -- A private filetype so markdown LSPs and linters do not attach to the
   -- transient buffer; syntax highlighting is applied by hand.
-  vim.bo[buf].filetype = "ultraplan-edit"
+  vim.bo[buf].filetype = "planreview-edit"
   M._detach_any_lsp(buf)
   pcall(vim.api.nvim_buf_call, buf, function()
     vim.cmd("setlocal syntax=markdown")
@@ -123,12 +123,12 @@ function M.open_comment_float(opts)
     local list = type(keys) == "table" and keys or { keys }
     for _, k in ipairs(list) do
       vim.keymap.set({ "n", "i" }, k, confirm, {
-        buffer = buf, nowait = true, desc = "Ultraplan: confirm comment",
+        buffer = buf, nowait = true, desc = "PlanReview: confirm comment",
       })
     end
   end
   vim.keymap.set("n", "q", cancel, {
-    buffer = buf, nowait = true, desc = "Ultraplan: cancel comment",
+    buffer = buf, nowait = true, desc = "PlanReview: cancel comment",
   })
 
   -- Any other close (:q, <C-w>c) is a cancel, so nothing leaks.
@@ -186,14 +186,14 @@ function M.open_summary_float(lines, title, on_confirm, on_cancel)
     if on_confirm then
       on_confirm()
     end
-  end, { buffer = buf, nowait = true, desc = "Ultraplan: confirm submit" })
+  end, { buffer = buf, nowait = true, desc = "PlanReview: confirm submit" })
 
   vim.keymap.set("n", "q", function()
     close()
     if on_cancel then
       on_cancel()
     end
-  end, { buffer = buf, nowait = true, desc = "Ultraplan: back to the plan" })
+  end, { buffer = buf, nowait = true, desc = "PlanReview: back to the plan" })
 
   vim.api.nvim_create_autocmd("WinClosed", {
     pattern = tostring(win),

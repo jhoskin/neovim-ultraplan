@@ -1,12 +1,12 @@
 -- Session lifecycle, comment actions, keymaps, submit and cancel.
 
-local config = require("ultraplan.config")
-local Store = require("ultraplan.store")
-local sections = require("ultraplan.sections")
-local render = require("ultraplan.render")
-local ui = require("ultraplan.ui")
-local result = require("ultraplan.result")
-local export = require("ultraplan.export")
+local config = require("planreview.config")
+local Store = require("planreview.store")
+local sections = require("planreview.sections")
+local render = require("planreview.render")
+local ui = require("planreview.ui")
+local result = require("planreview.result")
+local export = require("planreview.export")
 
 local M = {}
 
@@ -17,7 +17,7 @@ function M.setup(opts)
 end
 
 local function notify(msg, level)
-  vim.notify("ultraplan: " .. msg, level or vim.log.levels.INFO)
+  vim.notify("plan-review: " .. msg, level or vim.log.levels.INFO)
 end
 
 local function first_key(v)
@@ -296,7 +296,7 @@ end
 -- Plumbing -----------------------------------------------------------------
 
 function M._register_autocmds()
-  local group = vim.api.nvim_create_augroup("ultraplan_session", { clear = true })
+  local group = vim.api.nvim_create_augroup("plan_review_session", { clear = true })
   -- Neovim is quitting with an unsubmitted review and no explicit
   -- submit/cancel/error ran: treat it as a cancel. cquit is a no-op this late
   -- in shutdown, so force the exit code with os.exit.
@@ -320,18 +320,18 @@ function M._register_autocmds()
 end
 
 function M._register_commands()
-  vim.api.nvim_create_user_command("UltraplanSubmit", function()
+  vim.api.nvim_create_user_command("PlanReviewSubmit", function()
     M.submit()
-  end, { desc = "Ultraplan: review the comments and submit" })
-  vim.api.nvim_create_user_command("UltraplanCancel", function()
+  end, { desc = "PlanReview: review the comments and submit" })
+  vim.api.nvim_create_user_command("PlanReviewCancel", function()
     M.cancel()
-  end, { desc = "Ultraplan: cancel the review" })
+  end, { desc = "PlanReview: cancel the review" })
 end
 
 function M._cleanup()
-  pcall(vim.api.nvim_del_augroup_by_name, "ultraplan_session")
-  pcall(vim.api.nvim_del_user_command, "UltraplanSubmit")
-  pcall(vim.api.nvim_del_user_command, "UltraplanCancel")
+  pcall(vim.api.nvim_del_augroup_by_name, "plan_review_session")
+  pcall(vim.api.nvim_del_user_command, "PlanReviewSubmit")
+  pcall(vim.api.nvim_del_user_command, "PlanReviewCancel")
   M._session = nil
 end
 
@@ -350,17 +350,17 @@ function M._set_keymaps(bufnr)
     return
   end
   local km = config.values.keymaps
-  set_map(bufnr, km.comment_line, M.comment_line, "Ultraplan: comment on this line")
-  set_map(bufnr, km.comment_range, M.comment_range, "Ultraplan: comment on the selection", "x")
-  set_map(bufnr, km.comment_section, M.comment_section, "Ultraplan: comment on this section")
-  set_map(bufnr, km.comment_plan, M.comment_plan, "Ultraplan: note on the whole plan")
-  set_map(bufnr, km.delete_comment, M.delete_comment, "Ultraplan: delete the comment here")
-  set_map(bufnr, km.next_comment, M.next_comment, "Ultraplan: next comment")
-  set_map(bufnr, km.prev_comment, M.prev_comment, "Ultraplan: previous comment")
-  set_map(bufnr, km.next_heading, M.next_heading, "Ultraplan: next heading")
-  set_map(bufnr, km.prev_heading, M.prev_heading, "Ultraplan: previous heading")
-  set_map(bufnr, km.submit, M.submit, "Ultraplan: submit")
-  set_map(bufnr, km.cancel, M.cancel, "Ultraplan: cancel")
+  set_map(bufnr, km.comment_line, M.comment_line, "PlanReview: comment on this line")
+  set_map(bufnr, km.comment_range, M.comment_range, "PlanReview: comment on the selection", "x")
+  set_map(bufnr, km.comment_section, M.comment_section, "PlanReview: comment on this section")
+  set_map(bufnr, km.comment_plan, M.comment_plan, "PlanReview: note on the whole plan")
+  set_map(bufnr, km.delete_comment, M.delete_comment, "PlanReview: delete the comment here")
+  set_map(bufnr, km.next_comment, M.next_comment, "PlanReview: next comment")
+  set_map(bufnr, km.prev_comment, M.prev_comment, "PlanReview: previous comment")
+  set_map(bufnr, km.next_heading, M.next_heading, "PlanReview: next heading")
+  set_map(bufnr, km.prev_heading, M.prev_heading, "PlanReview: previous heading")
+  set_map(bufnr, km.submit, M.submit, "PlanReview: submit")
+  set_map(bufnr, km.cancel, M.cancel, "PlanReview: cancel")
 end
 
 return M

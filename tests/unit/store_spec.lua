@@ -1,6 +1,6 @@
 -- Covers: TST-PLN-0005
 local H = ...
-local Store = require("ultraplan.store")
+local Store = require("planreview.store")
 
 H.describe("store", function()
   H.it("starts empty", function()

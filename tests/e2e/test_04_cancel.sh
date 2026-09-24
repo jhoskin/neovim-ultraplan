@@ -4,10 +4,10 @@
 # still open (the VimLeavePre safety net).
 source "$(dirname "$0")/lib.sh"
 
-SESSION="up_e2e_04"
+SESSION="pr_e2e_04"
 trap 'cleanup_session "$SESSION"' EXIT
 
-start_nvim "$SESSION" "$PLUGIN_ROOT" -c "'Ultraplan $FIXTURE_PLAN'"
+start_nvim "$SESSION" "$PLUGIN_ROOT" -c "'PlanReview $FIXTURE_PLAN'"
 wait_for "$SESSION" "Sample plan"
 send_keys "$SESSION" Escape
 send_keys "$SESSION" " Pq"
@@ -16,7 +16,7 @@ wait_for_exit "$SESSION"
 [ ! -e "$(result_file_for "$SESSION")" ] || { echo "FAIL: result file written on cancel"; exit 1; }
 cleanup_session "$SESSION"
 
-start_nvim "$SESSION" "$PLUGIN_ROOT" -c "'Ultraplan $FIXTURE_PLAN'"
+start_nvim "$SESSION" "$PLUGIN_ROOT" -c "'PlanReview $FIXTURE_PLAN'"
 wait_for "$SESSION" "Sample plan"
 send_cmd "$SESSION" "qa"
 wait_for_exit "$SESSION"

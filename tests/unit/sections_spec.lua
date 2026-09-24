@@ -1,6 +1,6 @@
 -- Covers: TST-PLN-0001 TST-PLN-0002 TST-PLN-0003 TST-PLN-0004
 local H = ...
-local S = require("ultraplan.sections")
+local S = require("planreview.sections")
 
 local plan = {
   "# Title", -- 1

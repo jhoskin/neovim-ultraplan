@@ -1,5 +1,5 @@
 #!/usr/bin/env bash
-# Install the Claude Code integration for neovim-ultraplan.
+# Install the Claude Code integration for neovim-plan-review.
 #
 # Symlinks the ExitPlanMode hook and the launcher into ~/.claude so Claude
 # Code opens every plan in Neovim for review before asking for approval.
@@ -22,10 +22,10 @@ fi
 
 root=$(cd "$(dirname "${BASH_SOURCE[0]}")/.." && pwd)
 
-hook_src="$root/scripts/ultraplan-hook"
-launch_src="$root/scripts/ultraplan-launch"
-hook_dst="$HOME/.claude/hooks/ultraplan-hook"
-launch_dst="$HOME/.claude/scripts/ultraplan-launch"
+hook_src="$root/scripts/plan-review-hook"
+launch_src="$root/scripts/plan-review-launch"
+hook_dst="$HOME/.claude/hooks/plan-review-hook"
+launch_dst="$HOME/.claude/scripts/plan-review-launch"
 
 for f in "$hook_src" "$launch_src"; do
   if [ ! -f "$f" ]; then
@@ -47,7 +47,7 @@ link_or_copy() {
   printf '  %s -> %s\n' "$dst" "$src"
 }
 
-printf 'Installing the ultraplan Claude integration (%s):\n' "$mode"
+printf 'Installing the plan-review Claude integration (%s):\n' "$mode"
 link_or_copy "$hook_src" "$hook_dst"
 link_or_copy "$launch_src" "$launch_dst"
 
@@ -60,11 +60,11 @@ Add this to "hooks" -> "PreToolUse" in ~/.claude/settings.json:
     "hooks": [
       {
         "type": "command",
-        "command": "~/.claude/hooks/ultraplan-hook",
+        "command": "~/.claude/hooks/plan-review-hook",
         "timeout": 7200
       }
     ]
   }
 
-Opt out any time with CLAUDE_ULTRAPLAN=off or `touch ~/.claude/ultraplan.off`.
+Opt out any time with CLAUDE_PLAN_REVIEW=off or `touch ~/.claude/plan-review.off`.
 EOF

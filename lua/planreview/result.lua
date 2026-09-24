@@ -1,10 +1,10 @@
 -- Serialize a review, save it, and end the Neovim process with the exit
 -- code the launcher expects:
---   0  submitted (the audit file path is written to $NVIM_ULTRAPLAN_RESULT)
+--   0  submitted (the audit file path is written to $NVIM_PLAN_REVIEW_RESULT)
 --   2  cancelled
---   1  error ("ultraplan: <type>: <message>" on stderr)
+--   1  error ("plan-review: <type>: <message>" on stderr)
 
-local export = require("ultraplan.export")
+local export = require("planreview.export")
 
 local M = {}
 
@@ -58,7 +58,7 @@ function M.is_approval(data)
 end
 
 function M.save_dir()
-  return vim.fn.stdpath("data") .. "/ultraplan"
+  return vim.fn.stdpath("data") .. "/plan-review"
 end
 
 -- Write the document as JSON into the audit directory. Returns the path, or
@@ -79,7 +79,7 @@ function M.save(data, dir)
 end
 
 function M.result_file_path()
-  local env = vim.env.NVIM_ULTRAPLAN_RESULT
+  local env = vim.env.NVIM_PLAN_REVIEW_RESULT
   if env and env ~= "" then
     return env
   end
@@ -121,7 +121,7 @@ end
 
 function M.exit_error(error_type, message)
   M._exit_initiated = true
-  io.stderr:write("ultraplan: " .. error_type .. ": " .. (message or "") .. "\n")
+  io.stderr:write("plan-review: " .. error_type .. ": " .. (message or "") .. "\n")
   vim.cmd("cquit 1")
 end
 

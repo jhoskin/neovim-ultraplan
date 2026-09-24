@@ -4,13 +4,13 @@
 # comments, and the summary says so before confirming.
 source "$(dirname "$0")/lib.sh"
 
-SESSION="up_e2e_03"
+SESSION="pr_e2e_03"
 trap 'cleanup_session "$SESSION"' EXIT
 
-start_nvim "$SESSION" "$PLUGIN_ROOT" -c "'Ultraplan $FIXTURE_PLAN'"
+start_nvim "$SESSION" "$PLUGIN_ROOT" -c "'PlanReview $FIXTURE_PLAN'"
 wait_for "$SESSION" "Sample plan"
 
-send_cmd "$SESSION" "UltraplanSubmit"
+send_cmd "$SESSION" "PlanReviewSubmit"
 wait_for "$SESSION" "approve the plan"
 assert_pane_contains "$SESSION" "approved as written"
 send_keys "$SESSION" Enter

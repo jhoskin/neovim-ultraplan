@@ -18,13 +18,13 @@ start_nvim() {
 
   # Result file (some tests inspect it)
   local result_file
-  result_file=$(mktemp -t nvim-ultraplan-result.XXXXXX)
+  result_file=$(mktemp -t nvim-plan-review-result.XXXXXX)
   rm -f "$result_file"  # Ensure clean start
 
   # Start tmux session with nvim
   rm -f "/tmp/${session}.exit" "/tmp/${session}.stderr"
   tmux new-session -d -s "$session" -x 200 -y 50 -c "$repo" \
-    "NVIM_ULTRAPLAN_RESULT=$result_file nvim -u $MIN_INIT $* 2>/tmp/${session}.stderr; echo \$? > /tmp/${session}.exit"
+    "NVIM_PLAN_REVIEW_RESULT=$result_file nvim -u $MIN_INIT $* 2>/tmp/${session}.stderr; echo \$? > /tmp/${session}.exit"
 
   # Save the result file path for later inspection
   echo "$result_file" > "/tmp/${session}.result_file"
@@ -201,7 +201,7 @@ assert_json_valid() {
 CLIPBOARD_BACKUP_FILE=""
 save_clipboard() {
   if command -v pbpaste >/dev/null 2>&1; then
-    CLIPBOARD_BACKUP_FILE=$(mktemp -t up-clip-backup.XXXXXX)
+    CLIPBOARD_BACKUP_FILE=$(mktemp -t pr-clip-backup.XXXXXX)
     pbpaste > "$CLIPBOARD_BACKUP_FILE" 2>/dev/null || true
   fi
 }

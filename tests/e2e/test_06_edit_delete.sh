@@ -6,14 +6,14 @@
 # the whole-plan note.
 source "$(dirname "$0")/lib.sh"
 
-SESSION="up_e2e_06"
+SESSION="pr_e2e_06"
 trap 'cleanup_session "$SESSION"' EXIT
 
 count() {
-  send_cmd "$SESSION" "lua print('COUNT=' .. require('ultraplan')._session.store:count())"
+  send_cmd "$SESSION" "lua print('COUNT=' .. require('planreview')._session.store:count())"
 }
 
-start_nvim "$SESSION" "$PLUGIN_ROOT" -c "'Ultraplan $FIXTURE_PLAN'"
+start_nvim "$SESSION" "$PLUGIN_ROOT" -c "'PlanReview $FIXTURE_PLAN'"
 wait_for "$SESSION" "Sample plan"
 
 # Range 10-11, then press the comment key on line 11: the float is prefilled.
@@ -31,7 +31,7 @@ assert_pane_contains "$SESSION" "first draft"
 send_keys "$SESSION" Escape
 send_keys "$SESSION" "A"
 type_comment "$SESSION" " (edited)"
-send_cmd "$SESSION" "lua local c = require('ultraplan')._session.store:get(10); print('REC=' .. c.kind .. ':' .. c.end_lineno .. ':' .. c.body)"
+send_cmd "$SESSION" "lua local c = require('planreview')._session.store:get(10); print('REC=' .. c.kind .. ':' .. c.end_lineno .. ':' .. c.body)"
 assert_pane_contains "$SESSION" "REC=range:11:first draft (edited)"
 
 # A line comment on line 10 replaces the range comment (same start line).
@@ -42,7 +42,7 @@ count
 assert_pane_contains "$SESSION" "COUNT=0"
 send_keys "$SESSION" " Pr"
 type_comment "$SESSION" "just this line"
-send_cmd "$SESSION" "lua local c = require('ultraplan')._session.store:get(10); print('REC2=' .. c.kind .. ':' .. c.end_lineno)"
+send_cmd "$SESSION" "lua local c = require('planreview')._session.store:get(10); print('REC2=' .. c.kind .. ':' .. c.end_lineno)"
 assert_pane_contains "$SESSION" "REC2=line:10"
 
 # Delete with nothing under the cursor removes the whole-plan note.

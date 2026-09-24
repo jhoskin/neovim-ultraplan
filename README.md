@@ -1,7 +1,7 @@
-# neovim-ultraplan
+# neovim-plan-review
 
 Review a Claude Code plan in Neovim and send your comments back. A local,
-keyboard-driven version of the review loop Claude Code's Ultraplan preview
+keyboard-driven version of the review loop Claude Code's PlanReview preview
 offered on the web: Claude writes a plan, you read it in Neovim, leave
 comments on lines, ranges, sections or the whole plan, and Claude revises
 until you approve.
@@ -33,9 +33,9 @@ lazy.nvim:
 
 ```lua
 {
-  "jhoskin/neovim-ultraplan",
-  cmd = { "Ultraplan" },
-  main = "ultraplan",
+  "jhoskin/neovim-plan-review",
+  cmd = { "PlanReview" },
+  main = "planreview",
   opts = {
     keymaps = {
       comment_line = { "r", "<leader>Pr" },
@@ -47,7 +47,7 @@ lazy.nvim:
 }
 ```
 
-Keep `"Ultraplan"` in `cmd`: the launcher runs `nvim -c 'Ultraplan <file>'`,
+Keep `"PlanReview"` in `cmd`: the launcher runs `nvim -c 'PlanReview <file>'`,
 and without the entry the command is unknown until the plugin loads.
 
 Then wire up Claude Code:
@@ -56,14 +56,14 @@ Then wire up Claude Code:
 claude/install.sh
 ```
 
-It symlinks `scripts/ultraplan-hook` and `scripts/ultraplan-launch` into
+It symlinks `scripts/plan-review-hook` and `scripts/plan-review-launch` into
 `~/.claude` and prints the hook entry to add to `~/.claude/settings.json`:
 
 ```json
 {
   "matcher": "ExitPlanMode",
   "hooks": [
-    { "type": "command", "command": "~/.claude/hooks/ultraplan-hook", "timeout": 7200 }
+    { "type": "command", "command": "~/.claude/hooks/plan-review-hook", "timeout": 7200 }
   ]
 }
 ```
@@ -93,8 +93,8 @@ Headings inside fenced code blocks are ignored when finding sections.
 
 ## The review JSON
 
-Written to `~/.local/share/nvim/ultraplan/<id>.json` on submit (schema in
-`schema/ultraplan.v1.json`):
+Written to `~/.local/share/nvim/plan-review/<id>.json` on submit (schema in
+`schema/plan-review.v1.json`):
 
 ```json
 {
@@ -120,22 +120,22 @@ null `note` with no comments means the plan is approved.
 
 ## Using it without Claude Code
 
-`:Ultraplan path/to/plan.md` opens any markdown file for review. Without
-`NVIM_ULTRAPLAN_RESULT` set, submitting saves the JSON, copies the markdown
+`:PlanReview path/to/plan.md` opens any markdown file for review. Without
+`NVIM_PLAN_REVIEW_RESULT` set, submitting saves the JSON, copies the markdown
 to the clipboard and closes the tab. With the variable set to a file path,
 Neovim writes the JSON's path there and exits 0 on submit, 2 on cancel, 1
-on error. `scripts/ultraplan-launch` wraps that for scripts:
+on error. `scripts/plan-review-launch` wraps that for scripts:
 
 ```bash
-handle=$(ultraplan-launch start plan.md)   # opens a kitty tab, returns at once
-ultraplan-launch wait "$handle"            # blocks; prints the JSON, exit 0/2/1
-ultraplan-launch cancel "$handle"          # tear a review down
+handle=$(plan-review-launch start plan.md)   # opens a kitty tab, returns at once
+plan-review-launch wait "$handle"            # blocks; prints the JSON, exit 0/2/1
+plan-review-launch cancel "$handle"          # tear a review down
 ```
 
 ## Opting out
 
-Set `CLAUDE_ULTRAPLAN=off` in the environment, or `touch
-~/.claude/ultraplan.off`. The hook also stands down when no kitty socket is
+Set `CLAUDE_PLAN_REVIEW=off` in the environment, or `touch
+~/.claude/plan-review.off`. The hook also stands down when no kitty socket is
 reachable (headless or remote sessions).
 
 ## Development
@@ -144,7 +144,7 @@ reachable (headless or remote sessions).
 make unit       # headless unit tests
 make test-e2e   # tmux-driven end-to-end tests (needs tmux, jq; the launcher test needs zmx)
 make lint       # luacheck
-make health     # :checkhealth ultraplan
+make health     # :checkhealth planreview
 ```
 
 `docs/claude-integration.md` describes the hook contract in detail.

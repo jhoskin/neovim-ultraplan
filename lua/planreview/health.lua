@@ -2,7 +2,7 @@ local M = {}
 
 function M.check()
   local health = vim.health
-  health.start("ultraplan")
+  health.start("planreview")
 
   if vim.fn.has("nvim-0.10") == 1 then
     health.ok("Neovim " .. tostring(vim.version()))
@@ -21,15 +21,15 @@ function M.check()
     if vim.fn.executable(tool) == 1 then
       health.ok(tool .. " on PATH")
     else
-      health.warn(tool .. " not on PATH (needed by the launcher and the Claude Code hook, not by :Ultraplan itself)")
+      health.warn(tool .. " not on PATH (needed by the launcher and the Claude Code hook, not by :PlanReview itself)")
     end
   end
 
-  local env = vim.env.NVIM_ULTRAPLAN_RESULT
+  local env = vim.env.NVIM_PLAN_REVIEW_RESULT
   if env and env ~= "" then
     health.info("agent mode: results go to " .. env)
   else
-    health.info("interactive mode (NVIM_ULTRAPLAN_RESULT unset)")
+    health.info("interactive mode (NVIM_PLAN_REVIEW_RESULT unset)")
   end
 end
 

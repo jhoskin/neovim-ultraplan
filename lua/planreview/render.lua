@@ -2,12 +2,12 @@
 -- comment markers painted as extmarks, and cursor helpers the actions in
 -- init.lua build on.
 
-local config = require("ultraplan.config")
-local sections = require("ultraplan.sections")
+local config = require("planreview.config")
+local sections = require("planreview.sections")
 
 local M = {}
 
-M.NS = vim.api.nvim_create_namespace("ultraplan")
+M.NS = vim.api.nvim_create_namespace("plan_review")
 
 local state = {
   tab = nil,
@@ -34,7 +34,7 @@ function M.open(plan_info, store, opts)
   local placeholder = vim.api.nvim_get_current_buf()
 
   local buf = vim.api.nvim_create_buf(false, true)
-  vim.api.nvim_buf_set_name(buf, "ultraplan://" .. vim.fn.fnamemodify(plan_info.path, ":t"))
+  vim.api.nvim_buf_set_name(buf, "plan-review://" .. vim.fn.fnamemodify(plan_info.path, ":t"))
   vim.bo[buf].buftype = "nofile"
   vim.bo[buf].bufhidden = "wipe"
   vim.bo[buf].swapfile = false
@@ -43,7 +43,7 @@ function M.open(plan_info, store, opts)
   vim.bo[buf].modifiable = false
   -- A private filetype keeps markdown LSPs and linters off the scratch
   -- buffer; treesitter is started by hand for highlighting.
-  vim.bo[buf].filetype = "ultraplan"
+  vim.bo[buf].filetype = "planreview"
 
   vim.api.nvim_win_set_buf(win, buf)
   -- The empty buffer tabnew created is no longer shown; drop it so it does
@@ -248,8 +248,8 @@ function M.repaint()
   -- line 1 only show once the window scrolls past the top, so they would be
   -- invisible on open). A header line tells it apart from a line comment.
   if state.store.note then
-    local vl = { { { "  ┃ whole plan:", "UltraplanSign" } } }
-    for _, l in ipairs(virt_block(state.store.note, "  ┃ ", "UltraplanNote")) do
+    local vl = { { { "  ┃ whole plan:", "PlanReviewSign" } } }
+    for _, l in ipairs(virt_block(state.store.note, "  ┃ ", "PlanReviewNote")) do
       vl[#vl + 1] = l
     end
     vim.api.nvim_buf_set_extmark(buf, ns, 0, 0, { virt_lines = vl })
@@ -267,17 +267,17 @@ function M.repaint()
         end_row = last,
         end_col = 0,
         hl_eol = true,
-        hl_group = "UltraplanSpan",
+        hl_group = "PlanReviewSpan",
         priority = 50,
       })
       vim.api.nvim_buf_set_extmark(buf, ns, start_row, 0, {
         sign_text = config.values.sign_text,
-        sign_hl_group = "UltraplanSign",
+        sign_hl_group = "PlanReviewSign",
       })
       -- virt_lines hang below the mark's own row, so the body goes on a
       -- mark at the last row of the span.
       vim.api.nvim_buf_set_extmark(buf, ns, last - 1, 0, {
-        virt_lines = virt_block(c.body, "  ┃ ", "UltraplanComment"),
+        virt_lines = virt_block(c.body, "  ┃ ", "PlanReviewComment"),
       })
     end
   end

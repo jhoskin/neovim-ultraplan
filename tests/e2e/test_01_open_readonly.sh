@@ -4,14 +4,14 @@
 # filetype, no LSP client, cursor in the plan window.
 source "$(dirname "$0")/lib.sh"
 
-SESSION="up_e2e_01"
+SESSION="pr_e2e_01"
 trap 'cleanup_session "$SESSION"' EXIT
 
-start_nvim "$SESSION" "$PLUGIN_ROOT" -c "'Ultraplan $FIXTURE_PLAN'"
+start_nvim "$SESSION" "$PLUGIN_ROOT" -c "'PlanReview $FIXTURE_PLAN'"
 wait_for "$SESSION" "Sample plan"
 
 send_cmd "$SESSION" "lua print(vim.api.nvim_buf_get_name(0), vim.bo.filetype, tostring(vim.bo.modifiable), #vim.lsp.get_clients({bufnr=0}), vim.wo.signcolumn)"
-assert_pane_contains "$SESSION" "ultraplan://fixture_plan.md ultraplan false 0 yes"
+assert_pane_contains "$SESSION" "plan-review://fixture_plan.md planreview false 0 yes"
 
 # Typing must not change the buffer.
 send_keys "$SESSION" Escape

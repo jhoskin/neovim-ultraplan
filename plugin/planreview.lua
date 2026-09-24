@@ -1,7 +1,7 @@
-if vim.g.loaded_ultraplan then
+if vim.g.loaded_planreview then
   return
 end
-vim.g.loaded_ultraplan = true
+vim.g.loaded_planreview = true
 
 -- Run fn now from a live session, or after startup when invoked via
 -- `nvim -c` (the agent launcher), where the UI is not ready yet. VimEnter
@@ -20,12 +20,12 @@ local function after_enter(fn)
   })
 end
 
-vim.api.nvim_create_user_command("Ultraplan", function(opts)
+vim.api.nvim_create_user_command("PlanReview", function(opts)
   -- No file completion on purpose: it would expand `%` and friends before
   -- we see the argument. init.lua normalises `~` and relative paths.
   local path = opts.args
   after_enter(function()
-    require("ultraplan").start(path)
+    require("planreview").start(path)
   end)
 end, {
   nargs = 1,

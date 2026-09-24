@@ -1,6 +1,6 @@
 #!/usr/bin/env bash
 # Covers: TST-PLN-0019 TST-PLN-0020
-# The launcher, driven without kitty (UP_KITTEN_BIN=false) against the
+# The launcher, driven without kitty (PLAN_REVIEW_KITTEN_BIN=false) against the
 # minimal test config: unsafe and missing paths are refused; start returns a
 # handle and status reports running; cancel from inside Neovim makes wait
 # exit 2 and tears the session down; a submitted review makes wait print
@@ -9,27 +9,27 @@
 set -uo pipefail
 
 PLUGIN_ROOT="${PLUGIN_ROOT:-$(cd "$(dirname "${BASH_SOURCE[0]}")/../.." && pwd)}"
-ZMX="${UP_ZMX_BIN:-/opt/homebrew/bin/zmx}"
+ZMX="${PLAN_REVIEW_ZMX_BIN:-/opt/homebrew/bin/zmx}"
 if [ ! -x "$ZMX" ]; then
   echo "SKIP: zmx not found at $ZMX"
   exit 0
 fi
 
-export UP_ZMX_BIN="$ZMX"
-export UP_KITTEN_BIN=/usr/bin/false
-export UP_WORKDIR
-UP_WORKDIR=$(mktemp -d -t up-launch.XXXXXX)
+export PLAN_REVIEW_ZMX_BIN="$ZMX"
+export PLAN_REVIEW_KITTEN_BIN=/usr/bin/false
+export PLAN_REVIEW_WORKDIR
+PLAN_REVIEW_WORKDIR=$(mktemp -d -t pr-launch.XXXXXX)
 # Silence the test-config banner: with no terminal attached yet, Neovim's
 # startup messages would otherwise stack into a hit-enter prompt.
-export UP_NVIM_BIN="nvim -u $PLUGIN_ROOT/tests/minimal_init.lua --cmd 'let g:ultraplan_silent=1'"
-L="$PLUGIN_ROOT/scripts/ultraplan-launch"
+export PLAN_REVIEW_NVIM_BIN="nvim -u $PLUGIN_ROOT/tests/minimal_init.lua --cmd 'let g:planreview_silent=1'"
+L="$PLUGIN_ROOT/scripts/plan-review-launch"
 PLAN="$PLUGIN_ROOT/tests/e2e/fixture_plan.md"
 
 cleanup() {
-  for st in "$UP_WORKDIR"/review.*.state; do
+  for st in "$PLAN_REVIEW_WORKDIR"/review.*.state; do
     [ -e "$st" ] && "$L" cancel "${st%.state}" >/dev/null 2>&1
   done
-  rm -rf "$UP_WORKDIR"
+  rm -rf "$PLAN_REVIEW_WORKDIR"
 }
 trap cleanup EXIT
 
@@ -63,7 +63,7 @@ S=$(session_of "$H")
 ready "$S"
 "$L" status "$H" >/dev/null 2>&1; rc=$?
 [ "$rc" = "3" ] || fail "status rc=$rc, want 3"
-esc "$S"; send "$S" $':UltraplanCancel\r'
+esc "$S"; send "$S" $':PlanReviewCancel\r'
 "$L" wait "$H" >/dev/null 2>&1; rc=$?
 [ "$rc" = "2" ] || fail "wait after cancel rc=$rc, want 2"
 [ ! -e "$H.state" ] || fail "state file survived cancel"
@@ -75,8 +75,8 @@ S=$(session_of "$H")
 ready "$S"
 # Add the comment through the store and submit directly: keystroke handling
 # is covered by the tmux tests; this one is about the launcher's handshake.
-esc "$S"; send "$S" $':lua require("ultraplan")._session.store:add({ lineno = 5, body = "from the launcher test" })\r'
-esc "$S"; send "$S" $':lua require("ultraplan")._do_submit()\r'
+esc "$S"; send "$S" $':lua require("planreview")._session.store:add({ lineno = 5, body = "from the launcher test" })\r'
+esc "$S"; send "$S" $':lua require("planreview")._do_submit()\r'
 OUT=$("$L" wait "$H" 2>/dev/null); rc=$?
 [ "$rc" = "0" ] || fail "wait after submit rc=$rc, want 0"
 echo "$OUT" | jq -e '.comments | length == 1' >/dev/null || fail "unexpected JSON: $OUT"

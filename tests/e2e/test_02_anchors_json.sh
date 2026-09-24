@@ -5,10 +5,10 @@
 # by line, with the markdown rendering embedded.
 source "$(dirname "$0")/lib.sh"
 
-SESSION="up_e2e_02"
+SESSION="pr_e2e_02"
 trap 'cleanup_session "$SESSION"' EXIT
 
-start_nvim "$SESSION" "$PLUGIN_ROOT" -c "'Ultraplan $FIXTURE_PLAN'"
+start_nvim "$SESSION" "$PLUGIN_ROOT" -c "'PlanReview $FIXTURE_PLAN'"
 wait_for "$SESSION" "Sample plan"
 
 # Line comment on line 5 (inside ## Context).
@@ -38,7 +38,7 @@ assert_pane_contains "$SESSION" "stale how long?"
 assert_pane_contains "$SESSION" "merge steps 1 and 2"
 assert_pane_contains "$SESSION" "whole plan:"
 
-send_cmd "$SESSION" "UltraplanSubmit"
+send_cmd "$SESSION" "PlanReviewSubmit"
 wait_for "$SESSION" "Send 4 comments"
 send_keys "$SESSION" Enter
 wait_for_exit "$SESSION"
